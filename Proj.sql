@@ -3,8 +3,13 @@
 -- Descrizione: Database per la gestione di progetti ingegneristici con
 --              monitoraggio in tempo reale dei dati operativi dei macchinari.
 --              Comprende dipartimenti, ingegneri, clienti, progetti, compiti,
---              macchine, sensori e log dei dati operativi.
+--              macchine, sensori, log dei dati operativi, log degli errori riscontrati.
 -- =============================================
+
+----- Creazione del database
+DROP DATABASE IF EXISTS MonitoraggioOperativoIngegneristico;
+CREATE DATABASE IF NOT EXISTS MonitoraggioOperativoIngegneristico;
+USE MonitoraggioOperativoIngegneristico;
 
 -- Rimozione delle tabelle se esistono già (in ordine di dipendenza)
 DROP TABLE IF EXISTS DatiOperativi;
@@ -16,119 +21,135 @@ DROP TABLE IF EXISTS Macchine;
 DROP TABLE IF EXISTS Ingegneri;
 DROP TABLE IF EXISTS Clienti;
 DROP TABLE IF EXISTS Dipartimenti;
+DROP TABLE IF EXISTS Errori;
 
 -- Creazione della tabella Dipartimenti
-CREATE TABLE Dipartimenti (
+CREATE TABLE IF NOT EXISTS Dipartimenti (
     id_dipartimento INT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL
-);
+    nome VARCHAR(20) NOT NULL
+)ENGINE=INNODB;
 
 -- Creazione della tabella Ingegneri
-CREATE TABLE Ingegneri (
+CREATE TABLE IF NOT EXISTS Ingegneri (
     id_ingegnere INT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    cognome VARCHAR(100) NOT NULL,
+    nome VARCHAR(20) NOT NULL,
+    cognome VARCHAR(20) NOT NULL,
     id_dipartimento INT,
     FOREIGN KEY (id_dipartimento) REFERENCES Dipartimenti(id_dipartimento)
-);
+)ENGINE=INNODB;
 
 -- Creazione della tabella Clienti
-CREATE TABLE Clienti (
+CREATE TABLE IF NOT EXISTS Clienti (
     id_cliente INT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    settore VARCHAR(100)
-);
+    nome VARCHAR(20) NOT NULL,
+    settore VARCHAR(20)
+)ENGINE=INNODB;
 
 -- Creazione della tabella Progetti
-CREATE TABLE Progetti (
+CREATE TABLE IF NOT EXISTS Progetti (
     id_progetto INT PRIMARY KEY,
-    nome VARCHAR(200) NOT NULL,
+    nome VARCHAR(20) NOT NULL,
     descrizione TEXT,
     data_inizio DATE,
     data_fine DATE,
     budget DECIMAL(12,2),
     id_cliente INT,
     FOREIGN KEY (id_cliente) REFERENCES Clienti(id_cliente)
-);
+)ENGINE=INNODB;
 
--- Creazione della tabella Compiti
-CREATE TABLE Compiti (
-    id_compito INT PRIMARY KEY,
+-- Creazione della tabella Compiti, associata a Progetti e Ingegneri
+CREATE TABLE IF NOT EXISTS Compiti (
     id_progetto INT,
+    id_ingegnere INT,
     descrizione TEXT,
     data_inizio DATE,
     data_fine DATE,
-    id_ingegnere INT,
+    PRIMARY KEY (id_progetto, id_ingegnere),
     FOREIGN KEY (id_progetto) REFERENCES Progetti(id_progetto),
     FOREIGN KEY (id_ingegnere) REFERENCES Ingegneri(id_ingegnere)
-);
+)ENGINE=INNODB;
 
 -- Creazione della tabella Macchine
-CREATE TABLE Macchine (
+CREATE TABLE IF NOT EXISTS Macchine (
     id_macchina INT PRIMARY KEY,
-    nome_macchina VARCHAR(100) NOT NULL,
-    tipo VARCHAR(100),
+    nome_macchina VARCHAR(20) NOT NULL,
+    tipo VARCHAR(20),
     anno_produzione INT
-);
+)ENGINE=INNODB;
 
 -- Tabella di relazione tra Progetti e Macchine (uso delle macchine nei progetti)
-CREATE TABLE Progetto_Macchina (
+CREATE TABLE IF NOT EXISTS Progetto_Macchina (
     id_progetto INT,
     id_macchina INT,
     utilizzo_ore INT,
     PRIMARY KEY (id_progetto, id_macchina),
     FOREIGN KEY (id_progetto) REFERENCES Progetti(id_progetto),
     FOREIGN KEY (id_macchina) REFERENCES Macchine(id_macchina)
-);
+)ENGINE=INNODB;
 
 -- Creazione della tabella Sensori (ogni macchina può avere uno o più sensori)
-CREATE TABLE Sensori (
+CREATE TABLE IF NOT EXISTS Sensori (
     id_sensore INT PRIMARY KEY,
     id_macchina INT,
-    tipo_sensore VARCHAR(100) NOT NULL,
+    tipo_acquisizione ENUM('Analogico', 'Digitale') NOT NULL,
+    tipo_sensore VARCHAR(30) NOT NULL,
     descrizione TEXT,
     FOREIGN KEY (id_macchina) REFERENCES Macchine(id_macchina)
-);
+)ENGINE=INNODB;
 
 -- Creazione della tabella DatiOperativi per registrare i dati in tempo reale dai sensori
-CREATE TABLE DatiOperativi (
+CREATE TABLE IF NOT EXISTS DatiOperativi (
     id_dato INT PRIMARY KEY,
     id_sensore INT,
-    timestamp DATETIME NOT NULL,
+    timestamp DATETIME DEFAULT NOT NULL,
     valore DECIMAL(10,3),
-    unita_misura VARCHAR(50),
+    unita_misura VARCHAR(30),
     FOREIGN KEY (id_sensore) REFERENCES Sensori(id_sensore)
-);
+)ENGINE=INNODB;
+
+-- Creazione della tabella degli errori automaticamente rilevati 
+CREATE TABLE IF NOT EXISTS Errori (
+    id_errore INT PRIMARY KEY,
+    id_dato INT,
+    descrizione TEXT,
+    FOREIGN KEY (id_dato) REFERENCES DatiOperativi(id_dato)
+)ENGINE=INNODB;
 
 -- =============================================
--- Inserimenti di esempio
+-- Popolamento tabelle
 -- =============================================
 
 -- Inserimento dei Dipartimenti
 INSERT INTO Dipartimenti (id_dipartimento, nome) VALUES
 (1, 'Ricerca e Sviluppo'),
 (2, 'Produzione'),
-(3, 'Amministrazione');
+(3, 'Ricerca materiali extraterrestri'),
+(4, 'Sistemi di controllo');
 
--- Inserimento degli Ingegneri
-INSERT INTO Ingegneri (id_ingegnere, nome, cognome, id_dipartimento) VALUES
-(1, 'Mario', 'Rossi', 1),
-(2, 'Luigi', 'Bianchi', 1),
-(3, 'Anna', 'Verdi', 2),
-(4, 'Giulia', 'Neri', 2),
-(5, 'Paolo', 'Gialli', 3);
+-- Load degli Ingegneri
+LOAD DATA LOCAL INFILE "Ingegneri.csv" INTO TABLE Ingegneri
+	FIELDS TERMINATED BY ";"
+	LINES TERMINATED BY "\r\n"
+	IGNORE 1 ROWS;
 
 -- Inserimento dei Clienti
 INSERT INTO Clienti (id_cliente, nome, settore) VALUES
 (1, 'ABC S.p.A.', 'Automotive'),
 (2, 'XYZ S.r.l.', 'Energia'),
-(3, 'Innovatech', 'Tecnologia');
+(3, 'G.G.P.A', 'Impossibiltà metafisiche'), 
+(4, 'Nasa', 'Aerospaziale'),
+(5, 'Black Mesa', 'Ricerca scientifica');
 
--- Inserimento dei Progetti
-INSERT INTO Progetti (id_progetto, nome, descrizione, data_inizio, data_fine, budget, id_cliente) VALUES
-(1, 'Progetto Turbo', 'Sviluppo di un nuovo motore ad alte prestazioni', '2024-01-10', '2024-12-31', 500000.00, 1),
-(2, 'Progetto Solare', 'Implementazione di pannelli solari ad alta efficienza', '2024-03-01', '2025-03-01', 300000.00, 2),
-(3, 'Progetto Smart', 'Progettazione di sistemi di automazione per edifici intelligenti', '2024-05-15', '2025-05-15', 450000.00, 3);
+-- Load dati dei Progetti
+LOAD DATA LOCAL INFILE "Progetti.txt" INTO TABLE Progetti  
+	FIELDS TERMINATED BY ";"
+	LINES TERMINATED BY "\r\n"
+	IGNORE 1 ROWS;
+
+-- Update del progetto 2
+UPDATE Progetti
+SET nome = 'Progetto Energia Solare Avanzata', descrizione = 'Sviluppo di un sistema di pannelli solari innovativi per la produzione di energia pulita e sostenibile.'
+WHERE id_progetto = 2;
 
 -- Inserimento dei Compiti
 INSERT INTO Compiti (id_compito, id_progetto, descrizione, data_inizio, data_fine, id_ingegnere) VALUES
@@ -143,7 +164,8 @@ INSERT INTO Macchine (id_macchina, nome_macchina, tipo, anno_produzione) VALUES
 (1, 'CNC Lathe', 'Tornio', 2018),
 (2, '3D Printer', 'Stampante 3D', 2021),
 (3, 'Laser Cutter', 'Taglio Laser', 2019),
-(4, 'Robot Saldatore', 'Robotica', 2020);
+(4, 'Robot Saldatore', 'Robotica', 2020),
+(5, 'Sega laser', 'taglio laser', 2022);
 
 -- Inserimento dei dati di utilizzo delle Macchine nei Progetti
 INSERT INTO Progetto_Macchina (id_progetto, id_macchina, utilizzo_ore) VALUES
@@ -169,39 +191,8 @@ INSERT INTO DatiOperativi (id_dato, id_sensore, timestamp, valore, unita_misura)
 (4, 4, '2024-04-01 08:30:00', 300, 'lux'),
 (5, 5, '2024-04-01 08:30:00', 15.8, 'A');
 
--- =============================================
--- Esempi di query
--- =============================================
-
--- 1. Lista di tutti i progetti con nome, cliente e budget
-SELECT P.nome AS Progetto, C.nome AS Cliente, P.budget
-FROM Progetti P
-JOIN Clienti C ON P.id_cliente = C.id_cliente;
-
--- 2. Elenco dei compiti assegnati a ciascun ingegnere e il numero totale di compiti
-SELECT I.nome, I.cognome, COUNT(CO.id_compito) AS Numero_Compiti
-FROM Ingegneri I
-LEFT JOIN Compiti CO ON I.id_ingegnere = CO.id_ingegnere
-GROUP BY I.id_ingegnere;
-
--- 3. Ore totali di macchina utilizzate per ogni progetto
-SELECT P.nome AS Progetto, SUM(PM.utilizzo_ore) AS Ore_Totali
-FROM Progetti P
-JOIN Progetto_Macchina PM ON P.id_progetto = PM.id_progetto
-GROUP BY P.id_progetto;
-
--- 4. Progetti attivi al momento (la data corrente compresa tra data_inizio e data_fine)
-SELECT nome, data_inizio, data_fine
-FROM Progetti
-WHERE CURRENT_DATE BETWEEN data_inizio AND data_fine;
-
--- 5. Monitoraggio in tempo reale: ultimi dati operativi registrati per ciascun sensore
-SELECT S.id_sensore, S.tipo_sensore, S.descrizione, D.timestamp, D.valore, D.unita_misura
-FROM Sensori S
-JOIN DatiOperativi D ON S.id_sensore = D.id_sensore
-WHERE D.timestamp = (
-    SELECT MAX(timestamp)
-    FROM DatiOperativi
-    WHERE id_sensore = S.id_sensore
-)
-ORDER BY S.id_sensore;
+-- Inserimento di errori simulati rilevati dai dati operativi
+INSERT INTO Errori (id_errore, id_dato, descrizione) VALUES
+(1, 1, 'Temperatura eccessiva nel motore del tornio'),
+(2, 2, 'Vibrazione anomala rilevata nel tornio'),
+(5, 5, 'Consumo energetico anomalo del robot saldatore');

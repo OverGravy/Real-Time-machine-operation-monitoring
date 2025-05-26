@@ -1,0 +1,5 @@
+12;Progetto turbo;Sviluppo di un nuovo motore ad alte prestazioni;2023-01-15;2023-06-30;1
+2;Progetto Solare;Sviluppo di un nuovo tipo di pannello solare ad alta efficienza;2020-01-09;2024-01-01;2
+32;Progetto SmartHome;Sviluppo di nuovi dispositivi per la domotica delle abitazioni;2024-04-23:2025-12-31;3
+46;Motore a improbabilità finita;Sviluppoi di un nuovo motore che rende probabile l'improbabile;1999-05-23;2055-12-31;4
+117;Modulo stazione spaziale;Sviluppo di un nuovo modulo per la ISS;2025-01-4;2027-01-04;5
